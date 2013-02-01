@@ -212,7 +212,7 @@ def FileByExt():
 
 def FileByExtNoDate():
   # Create a report of files by extension
-  sql = ('SELECT count(*), extension, SUM(size) FROM files GROUP BY extension')
+  sql = ('SELECT count(*), extension, SUM(size) FROM files GROUP BY extension ORDER by SUM(size)')
   c.execute(sql)
   query = c.fetchall()
   print ''
@@ -227,7 +227,7 @@ def FileByExtNoDate():
 
 def FileByUser():
   # Create a report of files by extension
-  sql = ('SELECT count(*), user, SUM(size) FROM files GROUP BY user')
+  sql = ('SELECT count(*), user, SUM(size) FROM files GROUP BY user ORDER by SUM(size)')
   c.execute(sql)
   query = c.fetchall()
   print ''
