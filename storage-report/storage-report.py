@@ -33,6 +33,7 @@ def main():
   parser.add_option('--list', dest='list', default='False', help='List full path of files for files older than number of days. Example: All files older than 100 days.')
   parser.add_option('--ext', action='store_true', default='False', help='Create a report showing counts of file extensions by date range')
   parser.add_option('--extnodate', action='store_true', default='False', help='Create a report showing counts of file extensions')
+  parser.add_option('--user', action='store_true', default='False', help='Create a report showing counts of files by user')
   parser.add_option('--archive', dest='archive', default='False', help='Directories that do not contain subdirectories or files more recent than the number of days given. Example: Show me directories that dont have files or folders newer than 100 days.')
   (options, args) = parser.parse_args()
   global database
@@ -57,6 +58,8 @@ def main():
     FileByExt()
   elif options.extnodate == True:
     FileByExtNoDate()
+  elif options.user == True:
+    FileByUser()
   elif options.archive != 'False':
     age = options.archive
     FileArchive(age)
@@ -214,6 +217,21 @@ def FileByExtNoDate():
   query = c.fetchall()
   print ''
   print '{0:25} {1:20} {2:50}'.format('Type','#','File Size')
+  print ''
+  for x in query:
+    numf = str(x[0])
+    type = str(x[1])
+    size = str(x[2] / 1024) + ' Kb'
+    print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+
+
+def FileByUser():
+  # Create a report of files by extension
+  sql = ('SELECT count(*), user, SUM(size) FROM files GROUP BY user')
+  c.execute(sql)
+  query = c.fetchall()
+  print ''
+  print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
   print ''
   for x in query:
     numf = str(x[0])
