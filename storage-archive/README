@@ -14,5 +14,10 @@ When I get some time I will write some documentation at:
 
 http://www.nineproductions.com
 
-##Disclaimer:
+## Dependancies:
+To install dependencies:
+
+pip install beefish pycrypto argparse boto
+
+## Disclaimer:
 Please use at your own risk. This script was created by me as a tool to help me learn Python.
