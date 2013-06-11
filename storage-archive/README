@@ -1,0 +1,18 @@
+Storage Archive Utility
+
+The following python script is being built to utilize Amazon Glacier for archival storage. In order to address security concerns and enable cost effective recovery of files the script does the following:
+ - Recursively parses through a directory dumping the contents into a .tar.gz
+   - Once the file reaches a certain size the file is encrypted using beefish
+   - Once encrypted the file is uploaded to Glacier
+ - Captures data on all archived files to a SQLite database.
+   - Includes modified time, date, extension, size, path, owner, file name
+   - Includes name of encrypted archive file that was created by script
+   - Includes login details to glacier vaults
+ - Create / delete vaults and initiate restores from glacier
+
+When I get some time I will write some documentation at:
+
+http://www.nineproductions.com
+
+##Disclaimer:
+Please use at your own risk. This script was created by me as a tool to help me learn Python.
