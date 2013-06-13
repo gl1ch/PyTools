@@ -45,7 +45,7 @@ def main():
       else:
         pass
     elif x == 'scan':
-      if args['initdb'] == True:
+      if y and args['initdb'] == True:
         init_database()
         FileProc(args['scan'])
       elif y:
@@ -145,6 +145,7 @@ def FileProc(currentdir):
       if os.path.isfile(FILE) == True:
         extension = str.lower(os.path.splitext(FILE)[1])
         mtime = int(os.path.getmtime(FILE))
+        atime = int(os.path.getatime(FILE))
         size = int(os.path.getsize(FILE))
         path, filename = os.path.split(FILE)
         try:
@@ -153,14 +154,15 @@ def FileProc(currentdir):
         except KeyError:
           user = 'none'
         print 'Processing: ' + filename 
-        c.execute('INSERT INTO files(mtime,size,user,path,file,extension) VALUES (?,?,?,?,?,?)', (mtime,size,user,path,filename,extension))
+        c.execute('INSERT INTO files(mtime,atime,size,user,path,file,extension) VALUES (?,?,?,?,?,?,?)', (mtime,atime,size,user,path,filename,extension))
       elif os.path.islink(FILE) == False: 
         FileProc(FILE)
     conn.commit()
 
 def FileOldFiles():
   # Query the SQLite database and show amount of files / size of files for a date range 
-  sql = ('SELECT temp.range AS [day range], count(*) AS [number of files], SUM(size) AS [summed size] FROM ('
+  global query
+  c.execute('SELECT temp.range AS [day range], count(*) AS [number of files], SUM(size) AS [summed size] FROM ('
              'SELECT CASE '
              'WHEN files.mtime > (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 30 THEN "AAA" '
              'WHEN files.mtime > (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 90 AND files.mtime <= (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 30 THEN "BBB" '
@@ -173,46 +175,21 @@ def FileOldFiles():
              'ELSE "JJJ" END '
              'AS range, size FROM files'
            ') temp GROUP BY temp.range')
-  c.execute(sql)
   query = c.fetchall()
-  print ''
-  print '{0:25} {1:15} {2:20}'.format('Days Old','#','Size of Files')
-  print ''
-  for x in query:
-    size = str(x[2] / 1024) + ' Kb'
-    numf = str(x[1])
-    if x[0] == 'AAA':
-      print '{0:25} {1:15} {2:20}'.format('0-30 Days Old',numf,size)
-    elif x[0] == 'BBB':
-      print '{0:25} {1:15} {2:20}'.format('30-90 Days Old',numf,size)
-    elif x[0] == 'CCC':
-      print '{0:25} {1:15} {2:20}'.format('90-182 Days Old',numf,size)
-    elif x[0] == 'DDD':
-      print '{0:25} {1:15} {2:20}'.format('182-365 Days Old',numf,size)
-    elif x[0] == 'EEE':
-      print '{0:25} {1:15} {2:20}'.format('365-547 Days Old',numf,size)
-    elif x[0] == 'FFF':
-      print '{0:25} {1:15} {2:20}'.format('547-730 Days Old',numf,size)
-    elif x[0] == 'GGG':
-      print '{0:25} {1:15} {2:20}'.format('730-1095 Days Old',numf,size)
-    elif x[0] == 'HHH':
-      print '{0:25} {1:15} {2:20}'.format('1095-1460 Days Old',numf,size)
-    elif x[0] == 'III':
-      print '{0:25} {1:15} {2:20}'.format('1460-1825 Days Old',numf,size)
-    elif x[0] == 'JJJ':
-      print '{0:25} {1:15} {2:20}'.format('Over Five Years Old',numf,size)
+  Report('FILEOLDFILES')
 
 def FileByDays(age):
   # Print a list of files that are older than the time given
+  global query
   age = int(currenttime - (int(age) * dayinsecond))
   c.execute('SELECT path,file FROM files WHERE path NOT IN (SELECT path FROM files WHERE mtime > (?))', (age,))
   query = c.fetchall()
-  for x in query:
-    print '{0:60}'.format(x[0] + '/' + x[1])
+  Report('FILEBYDAYS')
 
 def FileByExt():
   # Create a report of files by extension seperated by date range
-  sql = ('SELECT temp.range AS [day range], count(*) AS [number of files], extension AS [File Extensions], SUM(size) AS [summed size] FROM ('
+  global query
+  c.execute('SELECT temp.range AS [day range], count(*) AS [number of files], extension AS [File Extensions], SUM(size) AS [summed size] FROM ('
              'SELECT CASE '
              'WHEN files.mtime > (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 30 THEN "AAA" '
              'WHEN files.mtime > (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 90 AND files.mtime <= (julianday("now") - 2440587.5)*86400.0 - 86400.0 * 30 THEN "BBB" '
@@ -225,36 +202,8 @@ def FileByExt():
              'ELSE "JJJ" END '
              'AS range, extension, size FROM files'
            ') temp GROUP BY extension ORDER BY temp.range')
-  c.execute(sql)
   query = c.fetchall()
-  print ''
-  print '{0:25} {1:13} {2:20} {3:50}'.format('Age of Files','Type','#','File Size')
-  print ''
-  for x in query:
-    numf = str(x[1])
-    type = str(x[2])
-    size = str(x[3] / 1024) + ' Kb'
-    if x[0] == 'AAA':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('0-30 Days Old',type,numf,size)
-    elif x[0] == 'BBB':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('30-90 Days Old',type,numf,size)
-    elif x[0] == 'CCC':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('90-182 Days Old',type,numf,size)
-    elif x[0] == 'DDD':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('182-365 Days Old',type,numf,size)
-    elif x[0] == 'EEE':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('365-547 Days Old',type,numf,size)
-    elif x[0] == 'FFF':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('547-730 Days Old',type,numf,size)
-    elif x[0] == 'GGG':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('730-1095 Days Old',type,numf,size)
-    elif x[0] == 'HHH':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('1095-1460 Days Old',type,numf,size)
-    elif x[0] == 'III':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('1460-1825 Days Old',type,numf,size)
-    elif x[0] == 'JJJ':
-      print '{0:25} {1:13} {2:20} {3:50}'.format('Over Five Years Old',type,numf,size)
-
+  Report('FILEEXT')
 
 def FileByExtNoDate():
   # Create a report of files by extension
@@ -289,7 +238,74 @@ def ExtByUser(x):
   Report('EXTENSION')
 
 def Report(x):
-  if x == 'EXTENSION':
+  if x == 'FILEOLDFILES':
+    print ''
+    print '{0:25} {1:15} {2:20}'.format('Days Old','#','Size of Files')
+    print ''
+    for col in query:
+      size = str(col[2] / 1024) + ' Kb'
+      numf = str(col[1])
+      if col[0] == 'AAA':
+        print '{0:25} {1:15} {2:20}'.format('0-30 Days Old',numf,size)
+      elif col[0] == 'BBB':
+        print '{0:25} {1:15} {2:20}'.format('30-90 Days Old',numf,size)
+      elif col[0] == 'CCC':
+        print '{0:25} {1:15} {2:20}'.format('90-182 Days Old',numf,size)
+      elif col[0] == 'DDD':
+        print '{0:25} {1:15} {2:20}'.format('182-365 Days Old',numf,size)
+      elif col[0] == 'EEE':
+        print '{0:25} {1:15} {2:20}'.format('365-547 Days Old',numf,size)
+      elif col[0] == 'FFF':
+        print '{0:25} {1:15} {2:20}'.format('547-730 Days Old',numf,size)
+      elif col[0] == 'GGG':
+        print '{0:25} {1:15} {2:20}'.format('730-1095 Days Old',numf,size)
+      elif col[0] == 'HHH':
+        print '{0:25} {1:15} {2:20}'.format('1095-1460 Days Old',numf,size)
+      elif col[0] == 'III':
+        print '{0:25} {1:15} {2:20}'.format('1460-1825 Days Old',numf,size)
+      elif col[0] == 'JJJ':
+        print '{0:25} {1:15} {2:20}'.format('Over Five Years Old',numf,size)
+  elif x == 'FILEBYDAYS':
+    for x in query:
+      print '{0:60}'.format(x[0] + '/' + x[1])
+  elif x == 'FILEEXT':
+    print ''
+    print '{0:25} {1:13} {2:20} {3:50}'.format('Age of Files','Type','#','File Size')
+    print ''
+    for col in query:
+      numf = str(col[1])
+      type = str(col[2])
+      size = str(col[3] / 1024) + ' Kb'
+      if col[0] == 'AAA':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('0-30 Days Old',type,numf,size)
+      elif col[0] == 'BBB':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('30-90 Days Old',type,numf,size)
+      elif col[0] == 'CCC':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('90-182 Days Old',type,numf,size)
+      elif col[0] == 'DDD':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('182-365 Days Old',type,numf,size)
+      elif col[0] == 'EEE':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('365-547 Days Old',type,numf,size)
+      elif col[0] == 'FFF':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('547-730 Days Old',type,numf,size)
+      elif col[0] == 'GGG':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('730-1095 Days Old',type,numf,size)
+      elif col[0] == 'HHH':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('1095-1460 Days Old',type,numf,size)
+      elif col[0] == 'III':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('1460-1825 Days Old',type,numf,size)
+      elif col[0] == 'JJJ':
+        print '{0:25} {1:13} {2:20} {3:50}'.format('Over Five Years Old',type,numf,size)
+  elif x == 'EXTENSION':
+    print ''
+    print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
+    print ''
+    for col in query:
+      numf = str(col[0])
+      type = str(col[1])
+      size = str(col[2] / 1024) + ' Kb'
+      print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+  elif x == 'USER':
     print ''
     print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
     print ''
@@ -301,15 +317,8 @@ def Report(x):
   elif x == 'ARCHIVE':
     for col in query:
       print '{0:60}'.format(col[0])
-  elif x == 'USER':
-    print ''
-    print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
-    print ''
-    for col in query:
-      numf = str(col[0])
-      type = str(col[1])
-      size = str(col[2] / 1024) + ' Kb'
-      print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+  else:
+    pass
 
 if __name__ == "__main__":
   main()
