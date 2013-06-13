@@ -3,7 +3,7 @@ import sys
 import os
 import pwd
 import time
-import optparse
+import argparse
 import sqlite3
 
 # Items to be filtered from file processing
@@ -14,73 +14,119 @@ currenttime = time.time()
 dayinsecond = 86400
 
 def main():
-  usage = """
-          First you will need to perform a search, creating a new database.
-          %prog --db <DB Name> <Path to Search> 
-
-          Once the database is created you can query it using the various built-in options
-          %prog [options]
-
-          Remember: Additional searches will add to an existing database if you do not 
-          initialize the current one or specify a new database
-
-          Using the --db option is well, optional. If you dont specify --db a database called 
-          .sqlite-sa.db is created"""
-  parser = optparse.OptionParser(usage) 
-  parser.add_option('--db', dest='database', default='.sqlite-sa.db', help='Supply a name for the SQLite DB we will generate (In current directory)')
-  parser.add_option('--initdb', action='store_true', default='False', help='Manually initialize the database')
-  parser.add_option('--old', action='store_true', default='False', help='Show total amount of files / size of files seperated by range of days since last modification')
-  parser.add_option('--list', dest='list', default='False', help='List full path of files for files older than number of days. Example: All files older than 100 days.')
-  parser.add_option('--ext', action='store_true', default='False', help='Create a report showing counts of file extensions by date range')
-  parser.add_option('--extnodate', action='store_true', default='False', help='Create a report showing counts of file extensions')
-  parser.add_option('--user', action='store_true', default='False', help='Create a report showing counts of files by user')
-  parser.add_option('--archive', dest='archive', default='False', help='Directories that do not contain subdirectories or files more recent than the number of days given. Example: Show me directories that dont have files or folders newer than 100 days.')
-  (options, args) = parser.parse_args()
+  global args
   global database
   global conn
   global c
-  database = options.database
-  conn = sqlite3.connect(database)
-  conn.text_factory = str
-  c = conn.cursor()
-  if options.initdb == True:
-    try:
-      create_database()
-    except sqlite3.OperationalError:
-      clear_database()
-      create_database()
-  elif options.old == True:
-    FileOldFiles()
-  elif options.list != 'False':
-    age = options.list
-    FileByDays(age)
-  elif options.ext == True:
-    FileByExt()
-  elif options.extnodate == True:
-    FileByExtNoDate()
-  elif options.user == True:
-    FileByUser()
-  elif options.archive != 'False':
-    age = options.archive
-    FileArchive(age)
-  elif len(args) >= 1:
-    path_name = args[0]
-    try:
-      FileProc(path_name)
-      c.close()
-    except sqlite3.OperationalError:
-      create_database()
-      FileProc(path_name)
-      c.close()
-  else:
-    print parser.print_help()
-  c.close() 
-    
 
-def create_database():
-  # Create a new database
-  sql = 'CREATE TABLE files (ID integer primary key, MTIME integer,SIZE integer,USER text,PATH text, FILE text,EXTENSION text)'
-  c.execute(sql)
+  parser = argparse.ArgumentParser(prog='storage-report.py',description='This utility is intended to collect data on a file server and then perform queries against the data set.')
+  parser.add_argument('-db', '--database', default='SA.sqlite', help='Supply a name for the SQLite DB to be generated')
+  parser.add_argument('-i', '--initdb', action='store_true', help='Manually create a new database')
+  parser.add_argument('-DD', '--deldb', action='store_true', help='Clear existing database')
+  parser.add_argument('-s', '--scan', help='Begin a scan of the file system. (default: %(default)s)')
+  parser.add_argument('-o', '--old', action='store_true', help='Show total amount of files / size of files seperated by range of days since last modification')
+  parser.add_argument('-l', '--list', help='List full path of files for files older than number of days. Example: All files older than 100 days.')
+  parser.add_argument('-e', '--ext', action='store_true', help='Create a report showing counts of file extensions by date range')
+  parser.add_argument('-ed', '--extnodate', action='store_true', help='Create a report showing counts of file extensions')
+  parser.add_argument('-u', '--user', action='store_true', help='Create a report showing counts of files by user')
+  parser.add_argument('-ue', '--usere', help='Create a report showing counts of files by user')
+  parser.add_argument('-a', '--archive', help='Directories that do not contain subdirectories or files more recent than the number of days given. Example: Show me directories that dont have files or folders newer than 100 days.')
+
+  if len(sys.argv) <= 1:
+    parser.print_usage() 
+    sys.exit(1) 
+  else:
+    args = vars(parser.parse_args())
+  
+  for x, y in args.iteritems():
+    if x == 'initdb':
+      if y == True:
+        init_database()
+      else:
+        pass
+    elif x == 'scan':
+      if args['initdb'] == True:
+        init_database()
+        FileProc(args['scan'])
+      elif y:
+        init_database()
+        FileProc(args['scan'])
+      else:
+        pass
+    elif x == 'old':
+      if y == True:
+        init_database()
+        FileOldFiles()
+      else:
+        pass
+    elif x == 'list':
+      if y:
+        try:
+          int(y)
+          init_database()
+          FileByDays(args['list'])
+        except:
+          print 'Please enter a numerical value'
+      else:
+        pass 
+    elif x == 'ext':
+      if y == True:
+        init_database()
+        FileByExt()
+      else:
+        pass
+    elif x == 'extnodate':
+      if y == True:
+        init_database()
+        FileByExtNoDate()
+      else:
+        pass
+    elif x == 'user':
+      if y == True:
+        init_database()
+        FileByUser()
+      else:
+        pass
+    elif x == 'usere':
+      if y.isdigit() != True:
+        init_database()
+        ExtByUser(args['usere'])
+      elif y.isdigit() == True:
+        print 'I am not a number!'
+      else:
+        pass
+    elif x == 'archive':
+      if y:
+        init_database()
+        FileArchive(args['archive'])
+      else:
+        pass
+
+def init_database():
+  # Initialize a new database or use an existing database
+  global database
+  global conn
+  global c
+
+  database = args['database']
+
+  if not os.path.isfile(database):
+    # Create a new database
+    conn = sqlite3.connect(database)
+    conn.text_factory = str
+    c = conn.cursor()
+    print('\r')
+    print 'Creating database: ' + database
+    sql = 'CREATE TABLE files (ID integer primary key, MTIME integer, ATIME integer, SIZE integer, USER text, PATH text, FILE text, EXTENSION text)'
+    c.execute(sql)
+  else:
+    # Use existing database
+    print('\r')
+    print 'Using existing database: ' + database
+    conn = sqlite3.connect(database)
+    conn.text_factory = str
+    c = conn.cursor()
+    return
 
 def clear_database():
   # Clear the database
@@ -212,18 +258,11 @@ def FileByExt():
 
 def FileByExtNoDate():
   # Create a report of files by extension
+  global query
   sql = ('SELECT count(*), extension, SUM(size) FROM files GROUP BY extension ORDER by SUM(size)')
   c.execute(sql)
   query = c.fetchall()
-  print ''
-  print '{0:25} {1:20} {2:50}'.format('Type','#','File Size')
-  print ''
-  for x in query:
-    numf = str(x[0])
-    type = str(x[1])
-    size = str(x[2] / 1024) + ' Kb'
-    print '{0:25} {1:20} {2:50}'.format(type, numf, size)
-
+  Report('EXTENSION')
 
 def FileByUser():
   # Create a report of files by extension
@@ -249,6 +288,23 @@ def FileArchive(age):
   for x in query:
     print '{0:60}'.format(x[0])
 
+def ExtByUser(x):
+  # See what types of files users are generating
+  global query
+  c.execute('SELECT count(*), extension, SUM(size) FROM files WHERE user IS (?) GROUP BY extension ORDER by SUM(size)', (x,))
+  query = c.fetchall()
+  Report('EXTENSION')
+
+def Report(x):
+  if x == 'EXTENSION':
+    print ''
+    print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
+    print ''
+    for col in query:
+      numf = str(col[0])
+      type = str(col[1])
+      size = str(col[2] / 1024) + ' Kb'
+      print '{0:25} {1:20} {2:50}'.format(type, numf, size)
 
 if __name__ == "__main__":
   main()
