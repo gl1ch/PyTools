@@ -24,6 +24,7 @@ def main():
   parser.add_argument('-i', '--initdb', action='store_true', help='Manually create a new database')
   parser.add_argument('-DD', '--deldb', action='store_true', help='Clear existing database')
   parser.add_argument('-s', '--scan', help='Begin a scan of the file system. (default: %(default)s)')
+  parser.add_argument('-du', '--dedup', action='store_true', help='Find duplicate files that have the same file name and file size')
   parser.add_argument('-o', '--old', action='store_true', help='Show total amount of files / size of files seperated by range of days since last modification')
   parser.add_argument('-l', '--list', help='List full path of files for files older than number of days. Example: All files older than 100 days.')
   parser.add_argument('-e', '--ext', action='store_true', help='Create a report showing counts of file extensions by date range')
@@ -103,6 +104,12 @@ def main():
         ExtPathByUser(user,ext)
       else:
         pass
+    elif x == 'dedup':
+      if y == True:
+        init_database()
+        DeDup()
+      else:
+        pass 
     elif x == 'archive':
       if y:
         init_database()
@@ -260,6 +267,13 @@ def ExtPathByUser(x,y):
   print 'Creating report for user ' + x
   Report('EXTPATH')
 
+def DeDup():
+  # Give me an estimate of duplicate files. This is not perfect as it is only comparing the file name and file size.
+  global query
+  c.execute('SELECT count(*), file, SUM(size) FROM files GROUP BY file, size HAVING count(*) > 1  ORDER by SUM(size), count(*)')
+  query = c.fetchall()
+  Report('DEDUP')
+
 def Report(x):
   if x == 'FILEOLDFILES':
     print ''
@@ -328,16 +342,25 @@ def Report(x):
       type = str(col[1])
       size = str(col[2] / 1024) + ' Kb'
       print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+  elif x == 'DEDUP':
+    print ''
+    print '{0:10} {1:20} {2:50}'.format('User','#','File Size')
+    print ''
+    for col in query:
+      numf = str(col[0])
+      file = str(col[1])
+      size = str(col[2] / 1024) + ' Kb'
+      print '{0:10} {1:20} {2:50}'.format(numf, size, file)
   elif x == 'EXTPATH':
     print ''
-    print '{0:25} {1:20} {2:50} {3:200}'.format('User','#','File Size','Path')
+    print '{0:10} {1:10} {2:20} {3:100}'.format('User','#','File Size','Path')
     print ''
     for col in query:
       numf = str(col[0])
       type = str(col[1])
       size = str(col[2] / 1024) + ' Kb'
       path = str(col[3])
-      print '{0:25} {1:20} {2:50} {3:200}'.format(type, numf, size, path)
+      print '{0:10} {1:10} {2:20} {3:100}'.format(type, numf, size, path)
   elif x == 'USER':
     print ''
     print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
