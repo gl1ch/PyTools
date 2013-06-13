@@ -10,9 +10,9 @@ The following python script is being built to utilize Amazon Glacier for archiva
    - Includes login details to glacier vaults
  - Create / delete vaults and initiate restores from glacier
 
-When I get some time I will write some documentation at:
+Documentation can be found here:
 
-http://www.nineproductions.com
+http://www.nineproductions.com/python-aws-glacier-archiver/
 
 ## Dependancies:
 To install dependencies:
