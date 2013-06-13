@@ -88,10 +88,10 @@ def main():
       else:
         pass
     elif x == 'usere':
-      if y.isdigit() != True:
+      if y and y.isdigit() != True:
         init_database()
         ExtByUser(args['usere'])
-      elif y.isdigit() == True:
+      elif y and y.isdigit() == True:
         print 'I am not a number!'
       else:
         pass
@@ -266,37 +266,42 @@ def FileByExtNoDate():
 
 def FileByUser():
   # Create a report of files by extension
-  sql = ('SELECT count(*), user, SUM(size) FROM files GROUP BY user ORDER by SUM(size)')
-  c.execute(sql)
+  global query
+  c.execute('SELECT count(*), user, SUM(size) FROM files GROUP BY user ORDER by SUM(size)')
   query = c.fetchall()
-  print ''
-  print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
-  print ''
-  for x in query:
-    numf = str(x[0])
-    type = str(x[1])
-    size = str(x[2] / 1024) + ' Kb'
-    print '{0:25} {1:20} {2:50}'.format(type, numf, size)
-
+  Report('USER')
 
 def FileArchive(age):
   # Locate directories that are candidates for archival. 
   # We are looking for directories where all files within the directory are older than "age".
+  global query
   age = int(currenttime - (int(age) * dayinsecond))
   c.execute('SELECT distinct path FROM files WHERE path NOT IN (SELECT distinct path FROM files WHERE mtime > (?))', (age,))
   query = c.fetchall()
-  for x in query:
-    print '{0:60}'.format(x[0])
+  Report('ARCHIVE')
 
 def ExtByUser(x):
   # See what types of files users are generating
   global query
   c.execute('SELECT count(*), extension, SUM(size) FROM files WHERE user IS (?) GROUP BY extension ORDER by SUM(size)', (x,))
   query = c.fetchall()
+  print 'Creating report for user ' + x
   Report('EXTENSION')
 
 def Report(x):
   if x == 'EXTENSION':
+    print ''
+    print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
+    print ''
+    for col in query:
+      numf = str(col[0])
+      type = str(col[1])
+      size = str(col[2] / 1024) + ' Kb'
+      print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+  elif x == 'ARCHIVE':
+    for col in query:
+      print '{0:60}'.format(col[0])
+  elif x == 'USER':
     print ''
     print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
     print ''
