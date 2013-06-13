@@ -30,6 +30,7 @@ def main():
   parser.add_argument('-ed', '--extnodate', action='store_true', help='Create a report showing counts of file extensions')
   parser.add_argument('-u', '--user', action='store_true', help='Create a report showing counts of files by user')
   parser.add_argument('-ue', '--usere', help='Create a report showing counts of files by user')
+  parser.add_argument('-uep', '--userep', action='store_true', help='Create a report to help us locate directories with large amount of files.')
   parser.add_argument('-a', '--archive', help='Directories that do not contain subdirectories or files more recent than the number of days given. Example: Show me directories that dont have files or folders newer than 100 days.')
 
   if len(sys.argv) <= 1:
@@ -95,6 +96,13 @@ def main():
         print 'I am not a number!'
       else:
         pass
+    elif x == 'userep':
+      if y == True:
+        init_database()
+        Prompt('EXTPATH')
+        ExtPathByUser(user,ext)
+      else:
+        pass
     elif x == 'archive':
       if y:
         init_database()
@@ -132,6 +140,13 @@ def clear_database():
   # Clear the database
   sql = 'DROP TABLE files'
   c.execute(sql)
+
+def Prompt(x):
+  if x == 'EXTPATH':
+    global user
+    global ext
+    user = raw_input('Please enter a user name to query against: ')
+    ext = raw_input('Please enter an extension to query against (Include the .): ')
 
 def FileProc(currentdir):
   # Process files in currentdir and add to a SQLite database
@@ -237,6 +252,14 @@ def ExtByUser(x):
   print 'Creating report for user ' + x
   Report('EXTENSION')
 
+def ExtPathByUser(x,y):
+  # See what types of files users are generating
+  global query
+  c.execute('SELECT count(*), extension, SUM(size), path FROM files WHERE user IS (?) AND extension IS (?) GROUP BY path ORDER by SUM(size)', (x,y,))
+  query = c.fetchall()
+  print 'Creating report for user ' + x
+  Report('EXTPATH')
+
 def Report(x):
   if x == 'FILEOLDFILES':
     print ''
@@ -305,6 +328,16 @@ def Report(x):
       type = str(col[1])
       size = str(col[2] / 1024) + ' Kb'
       print '{0:25} {1:20} {2:50}'.format(type, numf, size)
+  elif x == 'EXTPATH':
+    print ''
+    print '{0:25} {1:20} {2:50} {3:200}'.format('User','#','File Size','Path')
+    print ''
+    for col in query:
+      numf = str(col[0])
+      type = str(col[1])
+      size = str(col[2] / 1024) + ' Kb'
+      path = str(col[3])
+      print '{0:25} {1:20} {2:50} {3:200}'.format(type, numf, size, path)
   elif x == 'USER':
     print ''
     print '{0:25} {1:20} {2:50}'.format('User','#','File Size')
