@@ -138,7 +138,7 @@ def init_glconfig():
   user = getpass.getuser()
   region = 'us-east-1'
   vault = random(20)
-  asize = 500
+  asize = 500 * 1024**2
 
   try:
     c.execute('SELECT * FROM config')
