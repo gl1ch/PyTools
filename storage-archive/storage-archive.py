@@ -99,6 +99,9 @@ def error_stamp(x):
   else:
     return
 
+def is_power(num):
+  return num != 0 and ((num & (num - 1)) == 0)
+
 def init_database():
   # Initialize a new database or use an existing database
   global database
@@ -181,7 +184,12 @@ def init_glconfig():
     vault = raw_input('Enter vault name (default: %s): ' % vault) or vault
     region = raw_input('Enter region code (default: %s): ' % region) or region
     asize_in = raw_input('Enter a multipart upload size in MB. Value must be a power of 2 (default: %s MB): ' % asize) or asize
-    asize = asize_in * 1024 * 1024
+    asize = int(asize_in) * 1024 * 1024
+    while is_power(asize) == False:
+      print 'Sorry, that number is not a power of 2 (2,4,8,16,32,64,128,256,512,etc)'
+      asize = asize / 1024 / 1024
+      asize_in = raw_input('Enter a multipart upload size in MB. Value must be a power of 2 (default: %s MB): ' % asize) or asize
+      asize = int(asize_in) * 1024 * 1024
     c.execute('INSERT INTO config (TIMESTAMP,USER,KEYID,SECKEY,REGION,VAULT,ASIZE) VALUES (?,?,?,?,?,?,?)', (timestamp,user,key,secret,region,vault,asize))
     conn.commit()
     gl_id = 1
