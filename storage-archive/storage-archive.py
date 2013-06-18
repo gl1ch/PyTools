@@ -32,7 +32,7 @@ def main():
   parser = argparse.ArgumentParser(prog='storage-archive.py',description='This utility is intended to perform archive operations to Amazon Glacier.')
   parser.add_argument('-db', '--database', default='GLACIER-ARCHIVE.sqlite', help='Specify the name for the SQLite database')
   parser.add_argument('-ep', '--encpass', default='15', type=int, help='Number of bytes used when generating encryption passwords. (default: %(default)s)')
-  parser.add_argument('-sz', '--asize', default='500', type=int, help='Maximum size in MB of an archive. (default: %(default)s)')
+  parser.add_argument('-sz', '--asize', default='512', type=int, help='Maximum size in MB of an archive. Value must be a power of 2 (default: %(default)s)')
   parser.add_argument('-t', '--test', action='store_true', help='Test the archive operation without uploading. (default: %(default)s)')
   parser.add_argument('-i', '--initdb', action='store_true', help='Create or update a database and manage glacier configuration')
   parser.add_argument('-a', '--archive', help='Specify directory to archive')
@@ -138,7 +138,7 @@ def init_glconfig():
   user = getpass.getuser()
   region = 'us-east-1'
   vault = random(20)
-  asize = 500 * 1024**2
+  asize = args['asize']
 
   try:
     c.execute('SELECT * FROM config')
@@ -180,8 +180,8 @@ def init_glconfig():
     secret = raw_input('Enter Amazon secret access key: ')
     vault = raw_input('Enter vault name (default: %s): ' % vault) or vault
     region = raw_input('Enter region code (default: %s): ' % region) or region
-    # Left in case I switch to a multipart uploader but for now I am more worried about running out of disk space
-    #asize = raw_input('Enter concurrent upload size (default: %s): ' % asize) or asize
+    asize_in = raw_input('Enter a multipart upload size in MB. Value must be a power of 2 (default: %s MB): ' % asize) or asize
+    asize = asize_in * 1024 * 1024
     c.execute('INSERT INTO config (TIMESTAMP,USER,KEYID,SECKEY,REGION,VAULT,ASIZE) VALUES (?,?,?,?,?,?,?)', (timestamp,user,key,secret,region,vault,asize))
     conn.commit()
     gl_id = 1
@@ -231,7 +231,7 @@ def archive_mgmt():
   if archive == None:
     archive = '%s_%s' % (random(15), 'backup.tar.gz')
     tar = tarfile.open(archive, 'w:gz')
-  elif archive != None and os.path.getsize(archive) > args['asize'] * 1024**2:
+  elif archive != None and os.path.getsize(archive) > args['asize'] * 1024 * 1024:
     tar.close()
     enc_archive()
     glacier_mgmt(archive)
@@ -252,7 +252,6 @@ def enc_archive():
 
 def glacier_mgmt(archive):
   # Glacier upload / download management
-
   if gl_id == 1:
     # Archive files to Glacier
     glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
