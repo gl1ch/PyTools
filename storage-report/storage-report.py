@@ -280,7 +280,7 @@ def Report(x):
     print '{0:25} {1:15} {2:20}'.format('Days Old','#','Size of Files')
     print ''
     for col in query:
-      size = str(col[2] / 1024) + ' Kb'
+      size = str(col[2] / 1024) + ' KB'
       numf = str(col[1])
       if col[0] == 'AAA':
         print '{0:25} {1:15} {2:20}'.format('0-30 Days Old',numf,size)
@@ -312,7 +312,7 @@ def Report(x):
     for col in query:
       numf = str(col[1])
       type = str(col[2])
-      size = str(col[3] / 1024) + ' Kb'
+      size = str(col[3] / 1024) + ' KB'
       if col[0] == 'AAA':
         print '{0:25} {1:13} {2:20} {3:50}'.format('0-30 Days Old',type,numf,size)
       elif col[0] == 'BBB':
@@ -340,17 +340,28 @@ def Report(x):
     for col in query:
       numf = str(col[0])
       type = str(col[1])
-      size = str(col[2] / 1024) + ' Kb'
+      size = str(col[2] / 1024) + ' KB'
       print '{0:25} {1:20} {2:50}'.format(type, numf, size)
   elif x == 'DEDUP':
-    print ''
-    print '{0:10} {1:20} {2:50}'.format('User','#','File Size')
-    print ''
+    print('\r')
+    print '{0:15} {1:25} {2:25} {3:50}'.format('#','File Size','Savings','File Name')
+    print('\r')
+    tot_numf = 0
+    tot_size = 0
+    tot_savings = 0
     for col in query:
-      numf = str(col[0])
-      file = str(col[1])
-      size = str(col[2] / 1024) + ' Kb'
-      print '{0:10} {1:20} {2:50}'.format(numf, size, file)
+      numf = col[0]
+      file = col[1]
+      size = col[2] / 1024
+      savings = (size / numf) * (numf - 1)
+      tot_numf = tot_numf + (numf - 1)
+      tot_size = tot_size + size
+      tot_savings = tot_savings + savings
+      print '{0:15} {1:25} {2:25} {3:50}'.format(str(numf), str(size) + ' KB', str(savings) + ' KB', file)
+    print('\r')
+    print 'Totals'
+    print '{0:15} {1:25} {2:25}'.format('Files', 'Size', 'Savings')
+    print '{0:15} {1:25} {2:25}'.format(str(tot_numf), str(tot_size) + ' KB', str(tot_savings) + ' KB')
   elif x == 'EXTPATH':
     print ''
     print '{0:10} {1:10} {2:20} {3:100}'.format('User','#','File Size','Path')
@@ -358,7 +369,7 @@ def Report(x):
     for col in query:
       numf = str(col[0])
       type = str(col[1])
-      size = str(col[2] / 1024) + ' Kb'
+      size = str(col[2] / 1024) + ' KB'
       path = str(col[3])
       print '{0:10} {1:10} {2:20} {3:100}'.format(type, numf, size, path)
   elif x == 'USER':
@@ -368,7 +379,7 @@ def Report(x):
     for col in query:
       numf = str(col[0])
       type = str(col[1])
-      size = str(col[2] / 1024) + ' Kb'
+      size = str(col[2] / 1024) + ' KB'
       print '{0:25} {1:20} {2:50}'.format(type, numf, size)
   elif x == 'ARCHIVE':
     for col in query:
