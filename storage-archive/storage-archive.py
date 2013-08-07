@@ -263,7 +263,7 @@ def glacier_mgmt(archive):
   if gl_id == 1:
     # Archive files to Glacier
     glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
-    uploader = ConcurrentUploader(glacier_connect, vault, asize)
+    uploader = ConcurrentUploader(glacier_connect, vault, part_size=asize, num_threads=10)
     if os.path.isfile(archive_enc) == False:
       print str('-') * 121
       print 'Error: The archive file was not found'
