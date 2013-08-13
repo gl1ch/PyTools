@@ -16,7 +16,6 @@ from time import gmtime, strftime
 from beefish import decrypt, encrypt_file
 from boto.glacier.layer1 import Layer1
 from boto.glacier.vault import Vault
-from boto.glacier.concurrent import ConcurrentUploader
 import boto.glacier.exceptions
 
 # Items to be filtered from file processing
@@ -262,8 +261,8 @@ def glacier_mgmt(archive):
   # Glacier upload / download management
   if gl_id == 1:
     # Archive files to Glacier
-    glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
-    uploader = ConcurrentUploader(glacier_connect, vault, part_size=asize, num_threads=10)
+    glacier_connect = boto.connect_glacier(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+    glacier = glacier_connect.get_vault(vault)
     if os.path.isfile(archive_enc) == False:
       print str('-') * 121
       print 'Error: The archive file was not found'
@@ -272,7 +271,8 @@ def glacier_mgmt(archive):
     print 'Uploading archive: ' + archive_enc
     try:
       if args['test'] != True:
-        archive_id = uploader.upload(archive_enc)
+        #archive_id = uploader.upload(archive_enc)
+        archive_id = glacier.concurrent_create_archive_from_file(archive_enc, archive_enc)
         c.execute('UPDATE files SET vault_id=(?) WHERE archive=(?)', (vault,archive_enc,))
         conn.commit()
         os.remove(archive_enc)
