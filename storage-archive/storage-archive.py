@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Required: pip install beefish pycrypto argparse boto
 #
 # TODO:
