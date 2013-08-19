@@ -49,7 +49,7 @@ def main():
         init_glconfig()
       else:
         pass
-    elif x == 'archive':
+    elif x == 'archive' and y is not None:
       if args['initdb'] == True:
         file_proc(y)            
         tar.close()
