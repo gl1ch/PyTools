@@ -40,7 +40,6 @@ def main():
   parser.add_argument('-vl', '--vaultl', action='store_true', help='View the contents of an inventory job')
 
   args = vars(parser.parse_args())
-  print args
 
   for x, y in args.iteritems():
     if x == 'initdb':
