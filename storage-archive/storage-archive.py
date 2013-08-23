@@ -15,7 +15,6 @@ import getpass
 from time import gmtime, strftime
 from beefish import decrypt, encrypt_file
 from boto.glacier.layer1 import Layer1
-from boto.glacier.vault import Vault
 import boto.glacier.exceptions
 
 # Items to be filtered from file processing
@@ -41,6 +40,7 @@ def main():
   parser.add_argument('-vl', '--vaultl', action='store_true', help='View the contents of an inventory job')
 
   args = vars(parser.parse_args())
+  print args
 
   for x, y in args.iteritems():
     if x == 'initdb':
@@ -49,7 +49,7 @@ def main():
         init_glconfig()
       else:
         pass
-    elif x == 'archive':
+    elif x == 'archive' and y != None:
       if args['initdb'] == True:
         file_proc(y)            
         tar.close()
@@ -271,7 +271,6 @@ def glacier_mgmt(archive):
     print 'Uploading archive: ' + archive_enc
     try:
       if args['test'] != True:
-        #archive_id = uploader.upload(archive_enc)
         archive_id = glacier.concurrent_create_archive_from_file(archive_enc, archive_enc)
         c.execute('UPDATE files SET vault_id=(?) WHERE archive=(?)', (vault,archive_enc,))
         conn.commit()
@@ -287,8 +286,9 @@ def glacier_mgmt(archive):
       print 'File ' + str(archive_enc) + ' has been retained for later upload.'
       error_stamp('lower')
   elif gl_id == 2:
-    #glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
-    #downloader = retreive_archive(glacier_connect, vault, asize)
+    #glacier_connect = boto.connect_glacier(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+    #glacier = glacier_connect.get_vault(vault)
+    #downloader = glacier.retrieve_archive(archive_id)
     print 'Restore functionality goes here..... Eventually.'
 
 def glacier_vault_create():
@@ -297,7 +297,7 @@ def glacier_vault_create():
   init_glconfig()
 
   print 'Creating vault: ' + vault
-  glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+  glacier_connect = boto.connect_glacier(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
   glacier_connect.create_vault(vault)
 
 def glacier_vault_delete():
@@ -306,7 +306,7 @@ def glacier_vault_delete():
   init_glconfig()
 
   print 'Deleting vault: ' + vault
-  glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+  glacier_connect = boto.connect_glacier(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
   try:
     glacier_connect.delete_vault(vault)
     c.execute('DELETE FROM config WHERE vault=(?)', (vault,))
@@ -331,10 +331,13 @@ def glacier_vault_inv():
     conn.commit()
 
   try:
-    glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
-    job = glacier_connect.initiate_job(vault, {'Description':'inventory-job', 'Type':'inventory-retrieval', 'Format':'JSON'}) 
-    print 'Inventory Job ID: ' + str(job['JobId'])
-    c.execute('INSERT INTO jobs (TIMESTAMP,USER,VAULT,JOBID) VALUES (?,?,?,?)', (timestamp,user,vault,job['JobId']))
+    glacier_connect = boto.connect_glacier(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+    glacier = glacier_connect.get_vault(vault)
+    job = glacier.retrieve_inventory(sns_topic=None, description='Storage Archiver Inventory Retrieval')
+    #job = glacier_connect.initiate_job(vault, {'Description':'inventory-job', 'Type':'inventory-retrieval', 'Format':'JSON'}) 
+    job_id = str(job)
+    print 'Inventory Job ID: ' + job_id
+    c.execute('INSERT INTO jobs (TIMESTAMP,USER,VAULT,JOBID) VALUES (?,?,?,?)', (timestamp,user,vault,job_id))
     conn.commit()
   except boto.glacier.exceptions.UnexpectedHTTPResponseError as e:
     error_stamp('upper')
