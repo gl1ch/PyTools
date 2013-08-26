@@ -34,6 +34,7 @@ def main():
   parser.add_argument('-t', '--test', action='store_true', help='Test the archive operation without uploading. (default: %(default)s)')
   parser.add_argument('-i', '--initdb', action='store_true', help='Create or update a database and manage glacier configuration')
   parser.add_argument('-a', '--archive', help='Specify directory to archive')
+  parser.add_argument('-ad', '--archd', action='store_true', help='Delete archive from vault')
   parser.add_argument('-vc', '--vaultc', action='store_true', help='Create a new vault')
   parser.add_argument('-vd', '--vaultd', action='store_true', help='Delete an existing vault')
   parser.add_argument('-vi', '--vaulti', action='store_true', help='Submit an inventory job')
@@ -61,6 +62,11 @@ def main():
         tar.close()
         enc_archive()
         glacier_mgmt(archive)   
+    elif x == 'archd':
+      if y == True:
+        archive_delete()
+      else:
+        pass
     elif x == 'vaultc':
       if y == True and args['vaultd'] == True:
         print 'Cannot create and delete at the same time'
@@ -399,6 +405,14 @@ def glacier_vault_inv_out():
   except:
     print 'An error has occured'
     pass
+
+def archive_delete():
+  init_database()
+  init_glconfig()
+
+  archive_id = raw_input('Enter archive to be deleted: ') 
+  glacier_connect = Layer1(aws_access_key_id=key, aws_secret_access_key=secret, region_name=region)
+  glacier_connect.delete_archive(vault, archive_id)
 
 if __name__ == '__main__':
   main()
